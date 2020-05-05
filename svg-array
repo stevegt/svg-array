@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+from copy import deepcopy
+import re
+import sys
+
+import svgutils.compose as cm
+import svgutils.transform as tf
+
+# tested with svgutils as of:
+# commit e780d9917295b2433f14fbe46a30af02c8cf59e5 
+# Tue Apr 7 21:58:09 2020 +0200
+# (will not work with the version installed by pip at this moment)
+
+# usage: svg-array infn outfn xqty,xpad,xoffset yqty,ypad,yoffset
+
+infn = sys.argv[1]
+outfn = sys.argv[2]
+xparms = sys.argv[3]
+yparms = sys.argv[4]
+
+def parse(parms):
+    qty, ctrs, offset = parms.split(',')
+    return int(qty), float(ctrs), float(offset)
+
+xqty, xpad, xoffset = parse(xparms)
+yqty, ypad, yoffset = parse(yparms)
+
+infig = tf.fromfile(infn)
+in_width = cm.Unit(infig.width)
+in_height = cm.Unit(infig.height)
+print("input size:", in_width, in_height)
+
+xctrs = in_width.value + xpad
+yctrs = in_height.value + ypad
+
+yremain = in_height.value-yctrs
+
+out_width = cm.Unit("%dmm" % (xctrs * xqty - xpad))
+out_height = cm.Unit("%dmm" % (yctrs * yqty - ypad))
+print("output size:", out_width, out_height)
+
+outfig = tf.SVGFigure(out_width, out_height)
+
+inroot = infig.getroot()
+out = []
+for xi in range(xqty):
+    for yi in range(1, yqty+1):
+        x = xctrs * xi + xoffset 
+        y = yctrs * yi + yoffset + yremain
+        o = deepcopy(inroot)
+        o.moveto(x, y)
+        out.append(o)
+
+outfig.append(out)
+outfig.save(outfn)
+
